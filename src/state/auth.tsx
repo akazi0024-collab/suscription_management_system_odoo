@@ -1,11 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { PropsWithChildren } from "react";
-import type { Session, User } from "@supabase/supabase-js";
-import { isSupabaseConfigured, requireSupabase, type Profile } from "../lib/supabase";
+import { isSupabaseConfigured, requireSupabase, type AppRole, type LocalSession, type LocalUser, type Profile } from "../lib/supabase";
 
 interface AuthState {
-  session: Session | null;
-  user: User | null;
+  session: LocalSession | null;
+  user: LocalUser | null;
   profile: Profile | null;
   loading: boolean;
   refreshProfile: () => Promise<void>;
@@ -15,7 +14,7 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<LocalSession | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -28,7 +27,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
     const { data, error } = await client.from("profiles").select("id, full_name, role, avatar_url").eq("id", user.id).single();
     if (error) throw error;
-    setProfile(data as Profile);
+    if (!data || !["admin", "staff", "customer"].includes(String(data.role))) {
+      throw new Error("The signed-in account has no valid local profile.");
+    }
+    setProfile({
+      id: data.id,
+      full_name: String(data.full_name ?? ""),
+      role: String(data.role) as AppRole,
+      avatar_url: typeof data.avatar_url === "string" ? data.avatar_url : null,
+    } satisfies Profile);
   }, []);
 
   useEffect(() => {
@@ -53,7 +60,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (!nextSession) setProfile(null);
       else queueMicrotask(() => void refreshProfile());
     });
-    return () => subscription.unsubscribe();
+    return () => { subscription.unsubscribe(); };
   }, [refreshProfile]);
 
   const value = useMemo<AuthState>(() => ({

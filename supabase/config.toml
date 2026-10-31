@@ -1,3 +1,9 @@
+project_id = "orbit-local"
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
 [functions.create-staff]
 verify_jwt = true
 

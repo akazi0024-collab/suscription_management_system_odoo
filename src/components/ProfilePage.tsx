@@ -19,8 +19,9 @@ export function ProfilePage() {
     const fullName = String(form.get("full_name") ?? "").trim();
     const newPassword = String(form.get("password") ?? "");
     try {
+      if (!user?.id) throw new Error("Your session has expired. Sign in again.");
       const client = requireSupabase();
-      const { error: profileError } = await client.from("profiles").update({ full_name: fullName }).eq("id", user?.id);
+      const { error: profileError } = await client.from("profiles").update({ full_name: fullName }).eq("id", user.id);
       if (profileError) throw profileError;
       if (newPassword) {
         if (newPassword.length <= 8 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {

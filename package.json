@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "backend:start": "python3 backend/server.py"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

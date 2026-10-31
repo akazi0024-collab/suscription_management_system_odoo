@@ -171,6 +171,7 @@ export function ModulePage({ module, role, customerId }: { module: string; role:
         };
         const { data: created, error: documentError } = await requireSupabase().from(tableName).insert(document).select("id").single();
         if (documentError) throw documentError;
+        if (!created) throw new Error("The document could not be created.");
         const lineTable = module === "quotations" ? "quotation_lines" : "invoice_lines";
         const { error: lineError } = await requireSupabase().from(lineTable).insert({
           [module === "quotations" ? "quotation_id" : "invoice_id"]: created.id,

@@ -1,88 +1,39 @@
 # ORBIT — Subscription intelligence
 
-ORBIT is a React + TypeScript subscription-management app backed by Supabase Auth, PostgreSQL, Row Level Security, and Edge Functions. It intentionally starts with an empty database: there are no hard-coded business records or fake dashboard metrics.
+ORBIT runs locally with a Python standard-library HTTP API and a persistent SQLite database. Supabase and Docker are not required.
 
 ## Run locally
 
-Requirements: Node.js 20 or newer, npm, and a Supabase project.
+Requirements: Python 3 and Node.js 20 or newer.
+
+In the project folder, start the API and SQLite database:
+
+```sh
+npm run backend:start
+```
+
+In another terminal, start the frontend:
 
 ```sh
 npm install
-cp .env.example .env.local
-```
-
-Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local`. These are the public project URL and anon/publishable key; **never** put the service-role key in a `VITE_` variable or browser code.
-
-Apply the schema:
-
-```sh
-supabase login
-supabase link --project-ref YOUR_PROJECT_REF
-supabase db push
-```
-
-Alternatively, run [`supabase/migrations/20261031000000_orbit.sql`](./supabase/migrations/20261031000000_orbit.sql) in the Supabase SQL Editor.
-
-Deploy the authenticated business functions:
-
-```sh
-supabase functions deploy create-staff
-supabase functions deploy quotation-workflows
-supabase functions deploy record-payment
-supabase functions deploy subscription-action
-supabase functions deploy run-billing
-```
-
-Start the app:
-
-```sh
 npm run dev
 ```
 
-## First administrator
+Open the Vite URL shown in the terminal. The API listens only on `127.0.0.1:8000`; SQLite data is stored in `backend/orbit.sqlite3`. The server initializes the schema from [`backend/schema.sql`](./backend/schema.sql) and inserts the local administrator from [`backend/seed.sql`](./backend/seed.sql) on first start.
 
-Public registration always creates a customer account. After registering and verifying the owner email, promote that account to the initial workspace administrator from the Supabase SQL Editor (replace the example address):
+## Sign in
 
-```sql
-update public.profiles
-set role = 'admin'
-where id = (
-  select id from auth.users where email = lower('owner@example.com')
-);
+- Email: `demo@orbit.local`
+- Password: any non-empty value
 
-insert into public.staff (profile_id, full_name, email)
-select id, full_name, lower('owner@example.com')
-from public.profiles
-where id = (select id from auth.users where email = lower('owner@example.com'))
-on conflict (profile_id) do nothing;
-```
+The local demo account always enters the local administrator workspace. This password bypass is only implemented in the loopback-only local API; do not expose this development backend to a network or use it for production authentication.
 
-Creating additional staff accounts is only available to admins through the protected `create-staff` function. Staff passwords must be 9+ characters and include uppercase, lowercase, and a special character.
+## Local database
 
-## Supabase settings
+The schema and seed are plain SQL files in `backend/`. Records created in the app persist in the SQLite database. To reset the local workspace, stop the API and remove only `backend/orbit.sqlite3`, then start it again. The database is local development data; do not store production or sensitive customer data in this demo setup.
 
-- Add the app origin and `/reset-password` to Supabase Auth's site and redirect URL allow-lists.
-- Enable email confirmation and configure the project email provider before inviting real customers.
-- Supabase Edge Functions provide `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to the server runtime. Do not copy the service key to the frontend.
-- Set `APP_ORIGIN` to the deployed app origin for Edge Function CORS.
-- To run billing on a schedule, set a high-entropy `ORBIT_SCHEDULE_SECRET` in Edge Function secrets and configure a scheduler to `POST` to `/functions/v1/run-billing` with `x-orbit-schedule-secret` and JSON body `{"source":"scheduled"}`. The function checks this secret before using its service-role client. Manual billing runs require an authenticated admin or staff account.
+The local API currently handles login and session persistence, record CRUD, dashboard metrics, payments, quotation actions, subscription actions, and recurring invoice generation. No payment gateway or email delivery is configured.
 
-## Included workflows
+## Hosted Supabase
 
-- Email/password registration, login, sign-out, and password reset; new public accounts are always customers.
-- Admin-managed products, product variants, plans, quotation templates, taxes, discounts, and staff.
-- Quotation line creation, send/confirm transitions, and atomic conversion to a subscription.
-- Subscription pause, resume, cancellation, renewal, and plan/role checks.
-- Idempotent recurring billing with a unique subscription-period invoice key, per-run error records, retryable drafts, tax and eligible subscription-discount application.
-- Invoice confirmation, cancellation safeguards, print-to-PDF, partial payment allocation, and balance-based paid status. Payments are manual records only; no payment gateway is implied.
-- Customer-scoped portal data enforced by database RLS, not just route visibility.
-- Database-calculated dashboard and report aggregates, paginated searchable module tables, and CSV export.
-
-## Validation
-
-```sh
-npm run build
-npm audit --omit=dev
-```
-
-The app cannot connect to a real Supabase project until project credentials are configured. No credentials, payment gateway keys, or seeded customer data are included.
+The frontend has been switched to the local API. The SQL migration and Edge Functions under `supabase/` remain available for the earlier hosted-Supabase deployment, but they are not needed for this local setup.
