@@ -1,0 +1,14 @@
+[functions.create-staff]
+verify_jwt = true
+
+[functions.quotation-workflows]
+verify_jwt = true
+
+[functions.record-payment]
+verify_jwt = true
+
+[functions.subscription-action]
+verify_jwt = true
+
+[functions.run-billing]
+verify_jwt = false

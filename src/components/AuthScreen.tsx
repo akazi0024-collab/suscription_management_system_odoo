@@ -3,10 +3,10 @@ import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Orbit, Sparkles } from "luc
 import { requireSupabase } from "../lib/supabase";
 import { useAuth } from "../state/auth";
 
-type AuthMode = "login" | "register" | "reset";
+type AuthMode = "login" | "register" | "reset" | "update";
 
-export function AuthScreen() {
-  const [mode, setMode] = useState<AuthMode>("login");
+export function AuthScreen({ initialMode = "login" }: { initialMode?: AuthMode }) {
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -36,6 +36,15 @@ export function AuthScreen() {
         if (authError) throw authError;
         setMessage("Account created. Verify your email to sign in.");
         setMode("login");
+      } else if (mode === "update") {
+        if (password.length <= 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+          throw new Error("Use at least 9 characters with an uppercase letter, a lowercase letter, and a special character.");
+        }
+        const { error: authError } = await client.auth.updateUser({ password });
+        if (authError) throw authError;
+        window.history.replaceState({}, "", "/");
+        setMessage("Password updated. Your account is ready.");
+        setMode("login");
       } else {
         const { error: authError } = await client.auth.signInWithPassword({ email, password });
         if (authError) throw authError;
@@ -59,15 +68,14 @@ export function AuthScreen() {
         <div className="auth-topline"><span>Every subscription. One intelligent orbit.</span><span className="secure-label"><LockKeyhole size={13} /> SECURE WORKSPACE</span></div>
         <div className="auth-form-wrap">
           <div className="auth-kicker">WELCOME {mode === "register" ? "ABOARD" : "BACK"}</div>
-          <h1>{mode === "login" ? "Sign in to ORBIT" : mode === "register" ? "Create your account" : "Reset your password"}</h1>
-          <p className="auth-subtitle">{mode === "login" ? "Your business, beautifully in sync." : mode === "register" ? "Start managing your subscriptions in one place." : "We’ll send you a secure password reset link."}</p>
+          <h1>{mode === "login" ? "Sign in to ORBIT" : mode === "register" ? "Create your account" : mode === "update" ? "Choose a new password" : "Reset your password"}</h1>
+          <p className="auth-subtitle">{mode === "login" ? "Your business, beautifully in sync." : mode === "register" ? "Start managing your subscriptions in one place." : mode === "update" ? "Set a new password to secure your account." : "We’ll send you a secure password reset link."}</p>
           <form onSubmit={submit} className="auth-form">
-            {mode === "register" && <label className="field"><span>Full name</span><input name="name" autoComplete="name" placeholder="How should we call you?" required /><small /></label>}
-            <label className="field"><span>Email address</span><div className="input-icon"><Mail size={17} /><input type="email" name="email" autoComplete="email" placeholder="you@company.com" required /></div></label>
-            {mode !== "reset" && <label className="field"><span>Password</span><div className="input-icon"><LockKeyhole size={16} /><input type={showPassword ? "text" : "password"} name="password" autoComplete={mode === "login" ? "current-password" : "new-password"} placeholder="Enter your password" required minLength={mode === "register" ? 9 : undefined} /><button type="button" className="icon-button password-toggle" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></div>{mode === "register" && <small>9+ characters, including uppercase, lowercase and a special character.</small>}</label>}
+            {mode !== "update" && <label className="field"><span>Email address</span><div className="input-icon"><Mail size={17} /><input type="email" name="email" autoComplete="email" placeholder="you@company.com" required /></div></label>}
+            {mode !== "reset" && <label className="field"><span>{mode === "update" ? "New password" : "Password"}</span><div className="input-icon"><LockKeyhole size={16} /><input type={showPassword ? "text" : "password"} name="password" autoComplete={mode === "login" ? "current-password" : "new-password"} placeholder={mode === "update" ? "Choose a new password" : "Enter your password"} required minLength={mode === "register" || mode === "update" ? 9 : undefined} /><button type="button" className="icon-button password-toggle" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></div>{(mode === "register" || mode === "update") && <small>9+ characters, including uppercase, lowercase and a special character.</small>}</label>}
             {error && <div className="inline-alert inline-alert--error" role="alert">{error}</div>}
             {message && <div className="inline-alert inline-alert--success" role="status">{message}</div>}
-            <button type="submit" className="button button--primary auth-submit" disabled={busy}>{busy ? <span className="spinner" /> : <>{mode === "login" ? "Sign in" : mode === "register" ? "Create account" : "Send reset link"}<ArrowRight size={16} /></>}</button>
+            <button type="submit" className="button button--primary auth-submit" disabled={busy}>{busy ? <span className="spinner" /> : <>{mode === "login" ? "Sign in" : mode === "register" ? "Create account" : mode === "update" ? "Update password" : "Send reset link"}<ArrowRight size={16} /></>}</button>
           </form>
           <div className="auth-links">
             {mode === "login" && <button onClick={() => { setMessage(""); setError(""); setMode("reset"); }}>Forgot password?</button>}

@@ -11,6 +11,7 @@ export function ProfilePage() {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setBusy(true);
     setMessage("");
     setError("");
@@ -29,7 +30,8 @@ export function ProfilePage() {
         if (passwordError) throw passwordError;
       }
       await refreshProfile();
-      (event.currentTarget as HTMLFormElement).reset();
+      const passwordInput = formElement.elements.namedItem("password");
+      if (passwordInput instanceof HTMLInputElement) passwordInput.value = "";
       setMessage("Profile updated.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not update your profile.");

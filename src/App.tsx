@@ -10,6 +10,7 @@ export default function App() {
 
   if (!isSupabaseConfigured) return <SetupScreen />;
   if (loading) return <div className="boot-screen"><div className="orbit-mark orbit-mark--large"><i /><b /></div><span>Opening your orbit…</span></div>;
+  if (window.location.pathname === "/reset-password") return <AuthScreen initialMode="update" />;
   if (!user) return <AuthScreen />;
 
   return (
